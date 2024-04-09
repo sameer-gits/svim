@@ -11,7 +11,7 @@ use std::time::Duration;
 
 fn main() {
     let mut stdout = stdout();
-    let tildr = b"~";
+    let tilde = b"~";
     let (_, h) = size().unwrap();
 
     enable_raw_mode().unwrap();
@@ -19,7 +19,7 @@ fn main() {
 
     for i in 0..h {
         stdout.queue(MoveTo(0, i)).unwrap();
-        stdout.write(tildr).unwrap();
+        stdout.write(tilde).unwrap();
     }
     stdout.queue(MoveTo(2, 0)).unwrap();
     stdout.flush().unwrap();
