@@ -1,6 +1,8 @@
 use crossterm::cursor::MoveTo;
 use crossterm::{
-    terminal::{size, EnterAlternateScreen, LeaveAlternateScreen, enable_raw_mode, disable_raw_mode},
+    terminal::{
+        disable_raw_mode, enable_raw_mode, size, EnterAlternateScreen, LeaveAlternateScreen,
+    },
     QueueableCommand,
 };
 use std::io::{stdout, Write};
@@ -14,9 +16,12 @@ fn main() {
 
     enable_raw_mode().unwrap();
     stdout.queue(EnterAlternateScreen).unwrap();
-    stdout.queue(MoveTo(0, 0)).unwrap();
-    stdout.write(&tildr.repeat(h as usize)).unwrap();
-    print!("{}", h);
+
+    for i in 0..h {
+        stdout.queue(MoveTo(0, i)).unwrap();
+        stdout.write(tildr).unwrap();
+    }
+    stdout.queue(MoveTo(2, 0)).unwrap();
     stdout.flush().unwrap();
     sleep(Duration::from_secs(5));
     stdout.queue(LeaveAlternateScreen).unwrap();
