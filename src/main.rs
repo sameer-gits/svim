@@ -6,9 +6,9 @@ use crossterm::{
     },
     QueueableCommand,
 };
-use std::io::{stdout, Write};
+use std::io::{stdout, Write, Result};
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<()> {
     let mut stdout = stdout();
     let tilde = b"~";
     let (_, h) = size()?;
@@ -36,13 +36,13 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn quit_svim(stdout: &mut std::io::Stdout) -> std::io::Result<()> {
+fn quit_svim(stdout: &mut std::io::Stdout) -> Result<()> {
     stdout.queue(LeaveAlternateScreen)?;
     disable_raw_mode()?;
     Ok(())
 }
 
-fn read_char() -> std::io::Result<char> {
+fn read_char() -> Result<char> {
     loop {
         if let Ok(Event::Key(KeyEvent {
             code: KeyCode::Char(c),
