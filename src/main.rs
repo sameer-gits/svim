@@ -1,4 +1,4 @@
-use crossterm::cursor::MoveTo;
+use crossterm::cursor::{MoveDown, MoveLeft, MoveRight, MoveTo, MoveUp};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::{
     terminal::{
@@ -6,7 +6,7 @@ use crossterm::{
     },
     QueueableCommand,
 };
-use std::io::{stdout, Write, Result};
+use std::io::{stdout, Result, Write};
 
 fn main() -> Result<()> {
     let mut stdout = stdout();
@@ -16,11 +16,11 @@ fn main() -> Result<()> {
     enable_raw_mode()?;
     stdout.queue(EnterAlternateScreen)?;
 
-    for i in 0..h {
+    for i in 0..h - 2 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
     }
-    stdout.queue(MoveTo(2, 0))?;
+    stdout.queue(MoveTo(4, 0))?;
     stdout.flush()?;
 
     loop {
@@ -28,6 +28,26 @@ fn main() -> Result<()> {
             'q' => {
                 quit_svim(&mut stdout)?;
                 break;
+            }
+
+            'h' => {
+                stdout.queue(MoveLeft(1))?;
+                stdout.flush()?;
+            }
+
+            'j' => {
+                stdout.queue(MoveDown(1))?;
+                stdout.flush()?;
+            }
+
+            'k' => {
+                stdout.queue(MoveUp(1))?;
+                stdout.flush()?;
+            }
+
+            'l' => {
+                stdout.queue(MoveRight(1))?;
+                stdout.flush()?;
             }
             _ => {}
         };
