@@ -1,5 +1,5 @@
 use crossterm::cursor::MoveTo;
-use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::{
     terminal::{
         disable_raw_mode, enable_raw_mode, size, EnterAlternateScreen, LeaveAlternateScreen,
@@ -47,6 +47,7 @@ fn read_char() -> Result<char> {
         if let Ok(Event::Key(KeyEvent {
             code: KeyCode::Char(c),
             kind: event::KeyEventKind::Press,
+            modifiers: KeyModifiers::CONTROL,
             ..
         })) = event::read()
         {
