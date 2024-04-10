@@ -10,19 +10,10 @@ use std::io::{stdout, Result, Write};
 
 fn main() -> Result<()> {
     let mut stdout = stdout();
-    let tilde = b"~";
-    let (_, h) = size()?;
 
     enable_raw_mode()?;
     stdout.queue(EnterAlternateScreen)?;
-
-    for i in 0..h - 2 {
-        stdout.queue(MoveTo(0, i))?;
-        stdout.write_all(tilde)?;
-    }
-    stdout.queue(MoveTo(4, 0))?;
-    stdout.flush()?;
-
+    print_tilde(&mut stdout)?;
     loop {
         match read_char()? {
             'q' => {
@@ -74,4 +65,19 @@ fn read_char() -> Result<char> {
             return Ok(c);
         }
     }
+}
+
+fn print_tilde(stdout: &mut std::io::Stdout) -> Result<()> {
+    let tilde = b"~";
+    let (_, h) = size()?;
+
+    for i in 0..h - 2 {
+        stdout.queue(MoveTo(0, i))?;
+        stdout.write_all(tilde)?;
+        print!("{}", h);
+    }
+    stdout.queue(MoveTo(4, 0))?;
+    stdout.flush()?;
+
+    Ok(())
 }
