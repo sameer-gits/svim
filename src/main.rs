@@ -10,10 +10,11 @@ use std::io::{stdout, Result, Write};
 
 fn main() -> Result<()> {
     let mut stdout = stdout();
-
     enable_raw_mode()?;
     stdout.queue(EnterAlternateScreen)?;
-    print_tilde(&mut stdout)?;
+
+    let terminal_size = size()?;
+    print_tilde(&mut stdout, terminal_size)?;
     loop {
         match read_char()? {
             'q' => {
@@ -67,14 +68,13 @@ fn read_char() -> Result<char> {
     }
 }
 
-fn print_tilde(stdout: &mut std::io::Stdout) -> Result<()> {
+fn print_tilde(stdout: &mut std::io::Stdout, terminal_size: (u16, u16)) -> Result<()> {
     let tilde = b"~";
-    let (_, h) = size()?;
 
-    for i in 0..h - 2 {
+    for i in 0..terminal_size.1 - 2 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
-        print!("{}", h);
+        print!("{}", terminal_size.1);
     }
     stdout.queue(MoveTo(4, 0))?;
     stdout.flush()?;
