@@ -1,7 +1,8 @@
 use crossterm::cursor::{
     MoveDown, MoveLeft, MoveRight, MoveTo, MoveUp, RestorePosition, SavePosition,
 };
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     terminal::{
         disable_raw_mode, enable_raw_mode, size, EnterAlternateScreen, LeaveAlternateScreen,
@@ -9,81 +10,75 @@ use crossterm::{
     QueueableCommand,
 };
 use std::io::{stdout, Result, Write};
+use std::time::Duration;
 
 fn main() -> Result<()> {
     let mut stdout = stdout();
-    enable_raw_mode()?;
     stdout.queue(EnterAlternateScreen)?;
+    enable_raw_mode()?;
+
+    let (mut w, mut h) = size()?;
+    print_tilde(&mut stdout, (w, h))?;
     stdout.queue(MoveTo(4, 0))?;
     stdout.flush()?;
+
     loop {
-        match read_char()? {
-            'r' => {
-                let terminal_size = size()?;
-                print_tilde(&mut stdout, terminal_size)?;
+        while poll(Duration::ZERO)? {
+            match read()? {
+                Event::Resize(x, y) => {
+                    w = x;
+                    h = y;
+                    stdout.queue(Clear(ClearType::All))?;
+                    print_tilde(&mut stdout, (w, h))?;
+                    stdout.flush()?;
+                }
+                Event::Key(KeyEvent {
+                    code,
+                    modifiers: KeyModifiers::CONTROL,
+                    ..
+                }) => {
+                    if let KeyCode::Char('q') = code {
+                        disable_raw_mode()?;
+                        stdout.queue(LeaveAlternateScreen)?;
+                        return Ok(());
+                    }
+                }
+
+                Event::Key(KeyEvent { code, .. }) => {
+                    if let KeyCode::Char('h') = code {
+                        stdout.queue(MoveLeft(1))?;
+                        stdout.flush()?;
+                    }
+                    if let KeyCode::Char('j') = code {
+                        stdout.queue(MoveDown(1))?;
+                        stdout.flush()?;
+                    }
+                    if let KeyCode::Char('k') = code {
+                        stdout.queue(MoveUp(1))?;
+                        stdout.flush()?;
+                    }
+                    if let KeyCode::Char('l') = code {
+                        stdout.queue(MoveRight(1))?;
+                        stdout.flush()?;
+                    }
+                }
+                _ => {}
             }
-            'q' => {
-                quit_svim(&mut stdout)?;
-                break;
-            }
-
-            'h' => {
-                stdout.queue(MoveLeft(1))?;
-                stdout.flush()?;
-            }
-
-            'j' => {
-                stdout.queue(MoveDown(1))?;
-                stdout.flush()?;
-            }
-
-            'k' => {
-                stdout.queue(MoveUp(1))?;
-                stdout.flush()?;
-            }
-
-            'l' => {
-                stdout.queue(MoveRight(1))?;
-                stdout.flush()?;
-            }
-            _ => {}
-        };
-    }
-
-    Ok(())
-}
-
-fn quit_svim(stdout: &mut std::io::Stdout) -> Result<()> {
-    stdout.queue(LeaveAlternateScreen)?;
-    disable_raw_mode()?;
-    Ok(())
-}
-
-fn read_char() -> Result<char> {
-    loop {
-        if let Ok(Event::Key(KeyEvent {
-            code: KeyCode::Char(c),
-            kind: event::KeyEventKind::Press,
-            modifiers: KeyModifiers::CONTROL,
-            ..
-        })) = event::read()
-        {
-            return Ok(c);
         }
     }
 }
 
-fn print_tilde(stdout: &mut std::io::Stdout, terminal_size: (u16, u16)) -> Result<()> {
+fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
     let tilde = b"~";
     stdout.queue(SavePosition)?;
 
-    for i in 0..terminal_size.1 - 2 {
+    for i in 0..h - 2 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
-        print!("{}", terminal_size.1);
+        print!("{}", i + 1);
+        //print!("{} {} ", w, h);
     }
     stdout.queue(RestorePosition)?;
     stdout.flush()?;
-
     Ok(())
 }
