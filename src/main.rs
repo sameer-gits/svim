@@ -19,7 +19,7 @@ fn main() -> Result<()> {
 
     let (mut w, mut h) = size()?;
     print_tilde(&mut stdout, (w, h))?;
-    stdout.queue(MoveTo(4, 0))?;
+    stdout.queue(MoveTo(6, 0))?;
     stdout.flush()?;
 
     loop {
@@ -75,7 +75,8 @@ fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
     for i in 0..h - 2 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
-        print!("{}", i + 1);
+        let numbers = format!("{:>height$}", i + 1, height = 4);
+        print!("{}", numbers);
         //print!("{} {} ", w, h);
     }
     stdout.queue(RestorePosition)?;
