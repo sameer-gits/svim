@@ -68,17 +68,20 @@ fn main() -> Result<()> {
     }
 }
 
-fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
+fn print_tilde(stdout: &mut std::io::Stdout, (w, h): (u16, u16)) -> Result<()> {
     let tilde = b"~";
+    let intro = b"This is SVIM v0.0.1";
     stdout.queue(SavePosition)?;
 
     for i in 0..h - 2 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
-        let numbers = format!("{:>height$}", i + 1, height = 4);
+        let numbers = format!("{:>height$}", i + 1, height = 3);
         print!("{}", numbers);
         //print!("{} {} ", w, h);
     }
+    stdout.queue(MoveTo(w / 2 - intro.len() as u16 / 2 + 2, h / 2))?;
+    stdout.write_all(intro)?;
     stdout.queue(RestorePosition)?;
     stdout.flush()?;
     Ok(())
