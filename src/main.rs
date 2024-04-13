@@ -52,8 +52,8 @@ fn main() -> Result<()> {
                             //do nothing!
                         } else {
                             stdout.queue(MoveLeft(1))?;
+                            stdout.flush()?;
                         }
-                        stdout.flush()?;
                     }
                     if let KeyCode::Char('j') = code {
                         stdout.queue(MoveDown(1))?;
