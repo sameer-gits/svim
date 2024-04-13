@@ -9,7 +9,7 @@ use crossterm::{
     },
     QueueableCommand,
 };
-use std::fmt::{self, Display};
+use std::fmt::{self, Display, Formatter};
 use std::io::{stdout, Result, Write};
 use std::time::Duration;
 
@@ -24,7 +24,7 @@ struct Editor {
 }
 
 impl Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Mode::Normal => write!(f, "Normal"),
             Mode::Insert => write!(f, "Insert"),
