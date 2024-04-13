@@ -9,10 +9,82 @@ use crossterm::{
     },
     QueueableCommand,
 };
+use std::fmt::{self, Display};
 use std::io::{stdout, Result, Write};
 use std::time::Duration;
 
+enum Mode {
+    Normal,
+    Insert,
+    Visual,
+}
+
+struct Editor {
+    mode: Mode,
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Mode::Normal => write!(f, "Normal"),
+            Mode::Insert => write!(f, "Insert"),
+            Mode::Visual => write!(f, "Visual"),
+        }
+    }
+}
+
+impl Editor {
+    fn new() -> Self {
+        Editor { mode: Mode::Normal }
+    }
+
+    fn switch_mode(&mut self, key_event: KeyEvent) {
+        match self.mode {
+            Mode::Normal => match key_event.code {
+                KeyCode::Char('v') => {
+                    self.mode = Mode::Visual;
+                    println!("Switched to {} mode", self.mode);
+                }
+                KeyCode::Char('i') => {
+                    self.mode = Mode::Insert;
+                    println!("Switched to {} mode", self.mode);
+                }
+                _ => {}
+            },
+            Mode::Insert => match key_event.code {
+                KeyCode::Char('v') => {
+                    self.mode = Mode::Visual;
+                    println!("Switched to {} mode", self.mode);
+                }
+                KeyCode::Char('n') => {
+                    self.mode = Mode::Normal;
+                    println!("Switched to Visual mode");
+                }
+                _ => {}
+            },
+            Mode::Visual => match key_event.code {
+                KeyCode::Char('n') => {
+                    self.mode = Mode::Normal;
+                    println!("Switched to {} mode", self.mode);
+                }
+                KeyCode::Char('i') => {
+                    self.mode = Mode::Insert;
+                    println!("Switched to {} mode", self.mode);
+                }
+                _ => {}
+            },
+        }
+    }
+}
+
 fn main() -> Result<()> {
+    let mut editor = Editor::new();
+    loop {
+        if let Event::Key(key_event) = read()? {
+            editor.switch_mode(key_event);
+        }
+    }
+
     let mut stdout = stdout();
     stdout.queue(EnterAlternateScreen)?;
     enable_raw_mode()?;
@@ -44,7 +116,6 @@ fn main() -> Result<()> {
                         return Ok(());
                     }
                 }
-
                 Event::Key(KeyEvent { code, .. }) => {
                     if let KeyCode::Char('h') = code {
                         let (cursor_col, _) = position()?;
