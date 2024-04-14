@@ -1,7 +1,7 @@
 use crossterm::cursor::{
     position, MoveDown, MoveLeft, MoveRight, MoveTo, MoveUp, RestorePosition, SavePosition,
 };
-use crossterm::event::{self, poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     terminal::{
@@ -38,9 +38,17 @@ impl Editor {
         Editor { mode: Mode::Normal }
     }
 
-    fn switch_mode(&mut self, event: Event, stdout: &mut std::io::Stdout) -> Result<bool> {
+    fn switch_mode(
+        &mut self,
+        event: Event,
+        stdout: &mut std::io::Stdout,
+        (_, h): (u16, u16),
+        (cursor_col, cursor_row): (u16, u16),
+    ) -> Result<bool> {
         match event {
-            Event::Key(KeyEvent { code, modifiers, .. }) => {
+            Event::Key(KeyEvent {
+                code, modifiers, ..
+            }) => {
                 if code == KeyCode::Char('q') && modifiers == KeyModifiers::CONTROL {
                     disable_raw_mode()?;
                     stdout.queue(LeaveAlternateScreen)?;
@@ -65,12 +73,37 @@ impl Editor {
                             self.mode = Mode::Visual;
                             println!("Switched to {} mode", self.mode);
                         }
-                        // Handle other key events for Normal mode
+                        //  Below are movement keys..
+                        (KeyCode::Char('h'), KeyModifiers::NONE) => {
+                            if cursor_col <= 6 {
+                                //do nothing!
+                            } else {
+                                stdout.queue(MoveLeft(1))?;
+                                stdout.flush()?;
+                            }
+                        }
+                        (KeyCode::Char('j'), KeyModifiers::NONE) => {
+                            if cursor_row >= h - 3 {
+                                //do nothing!
+                            } else {
+                                stdout.queue(MoveDown(1))?;
+                                stdout.flush()?;
+                            }
+                        }
+                        (KeyCode::Char('k'), KeyModifiers::NONE) => {
+                            stdout.queue(MoveUp(1))?;
+                            stdout.flush()?;
+                        }
+                        (KeyCode::Char('l'), KeyModifiers::NONE) => {
+                            stdout.queue(MoveRight(1))?;
+                            stdout.flush()?;
+                        }
                         _ => {}
                     }
                 }
                 _ => {}
             },
+
             Mode::Insert => match event {
                 Event::Key(KeyEvent {
                     code, modifiers, ..
@@ -90,6 +123,7 @@ impl Editor {
                 }
                 _ => {}
             },
+
             Mode::Visual => match event {
                 Event::Key(KeyEvent {
                     code, modifiers, ..
@@ -119,29 +153,55 @@ fn main() -> Result<()> {
     let mut editor = Editor::new();
     stdout.queue(EnterAlternateScreen)?;
     enable_raw_mode()?;
+
+    let (mut w, mut h) = size()?;
+    print_tilde(&mut stdout, (w, h))?;
+    print_intro(&mut stdout, (w, h))?;
+    stdout.queue(MoveTo(6, 0))?;
     stdout.flush()?;
+
     loop {
-        if let Ok(event) = read() {
-            if editor.switch_mode(event, &mut stdout)? {
-                break; // Exit the loop if switch_mode returns true
+        let (cursor_col, cursor_row) = position()?;
+        while poll(Duration::ZERO)? {
+            match read()? {
+                Event::Key(event) => {
+                    if editor.switch_mode(
+                        Event::Key(event),
+                        &mut stdout,
+                        (w, h),
+                        (cursor_col, cursor_row),
+                    )? {
+                        return Ok(());
+                    }
+                }
+                Event::Resize(x, y) => {
+                    w = x;
+                    h = y;
+                    stdout.queue(SavePosition)?;
+                    stdout.queue(Clear(ClearType::All))?;
+                    print_tilde(&mut stdout, (w, h))?;
+                    stdout.queue(RestorePosition)?;
+                    stdout.flush()?;
+                }
+                _ => {}
             }
         }
+        if cursor_row >= h - 2 {
+            stdout.queue(MoveTo(cursor_col, h - 2))?;
+        }
     }
-    Ok(())
 }
 
 fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
     let tilde = b"~";
-    stdout.queue(SavePosition)?;
 
     for i in 0..h - 2 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
         let numbers = format!("{:>height$}", i + 1, height = 4);
-        print!("{}", numbers);
+        stdout.write(numbers.as_bytes())?;
         //print!("{} {} ", w, h);
     }
-    stdout.queue(RestorePosition)?;
     stdout.flush()?;
     Ok(())
 }
