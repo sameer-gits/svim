@@ -26,9 +26,9 @@ struct Editor {
 impl Display for Mode {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Mode::Normal => write!(f, "Normal"),
-            Mode::Insert => write!(f, "Insert"),
-            Mode::Visual => write!(f, "Visual"),
+            Mode::Normal => write!(f, "NORMAL"),
+            Mode::Insert => write!(f, "INSERT"),
+            Mode::Visual => write!(f, "VISUAL"),
         }
     }
 }
@@ -38,6 +38,9 @@ impl Editor {
         Editor { mode: Mode::Normal }
     }
 
+    fn mode(&self) -> &Mode {
+        &self.mode
+    }
     fn switch_mode(
         &mut self,
         event: Event,
@@ -67,11 +70,9 @@ impl Editor {
                     match (code, modifiers) {
                         (KeyCode::Char('i'), KeyModifiers::NONE) => {
                             self.mode = Mode::Insert;
-                            println!("Switched to {} mode", self.mode);
                         }
                         (KeyCode::Char('v'), KeyModifiers::NONE) => {
                             self.mode = Mode::Visual;
-                            println!("Switched to {} mode", self.mode);
                         }
                         //  Below are movement keys..
                         (KeyCode::Char('h'), KeyModifiers::NONE) => {
@@ -111,11 +112,9 @@ impl Editor {
                     match (code, modifiers) {
                         (KeyCode::Char('n'), KeyModifiers::NONE) => {
                             self.mode = Mode::Normal;
-                            println!("Switched to {} mode", self.mode);
                         }
                         (KeyCode::Char('v'), KeyModifiers::NONE) => {
                             self.mode = Mode::Visual;
-                            println!("Switched to {} mode", self.mode);
                         }
                         // Handle other key events for Insert mode
                         _ => {}
@@ -131,11 +130,9 @@ impl Editor {
                     match (code, modifiers) {
                         (KeyCode::Char('n'), KeyModifiers::NONE) => {
                             self.mode = Mode::Normal;
-                            println!("Switched to {} mode", self.mode);
                         }
                         (KeyCode::Char('i'), KeyModifiers::NONE) => {
                             self.mode = Mode::Insert;
-                            println!("Switched to {} mode", self.mode);
                         }
                         // Handle other key events for Visual mode
                         _ => {}
@@ -186,6 +183,11 @@ fn main() -> Result<()> {
                 _ => {}
             }
         }
+        stdout.queue(SavePosition)?;
+        stdout.queue(MoveTo(0, h - 1))?; // Move to the bottom of the screen
+        current_mode(&editor)?; // Print the current mode
+        stdout.queue(RestorePosition)?;
+        stdout.flush()?;
         if cursor_row >= h - 2 {
             stdout.queue(MoveTo(cursor_col, h - 2))?;
         }
@@ -203,6 +205,12 @@ fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
         //print!("{} {} ", w, h);
     }
     stdout.flush()?;
+    Ok(())
+}
+
+fn current_mode(editor: &Editor) -> Result<()> {
+    let mode = editor.mode();
+    print!("-- {mode} --");
     Ok(())
 }
 
