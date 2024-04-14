@@ -1,7 +1,7 @@
 use crossterm::cursor::{
     position, MoveDown, MoveLeft, MoveRight, MoveTo, MoveUp, RestorePosition, SavePosition,
 };
-use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     terminal::{
@@ -38,111 +38,96 @@ impl Editor {
         Editor { mode: Mode::Normal }
     }
 
-    fn switch_mode(&mut self, key_event: KeyEvent) {
+    fn switch_mode(&mut self, event: Event, stdout: &mut std::io::Stdout) -> Result<bool> {
+        match event {
+            Event::Key(KeyEvent { code, modifiers, .. }) => {
+                if code == KeyCode::Char('q') && modifiers == KeyModifiers::CONTROL {
+                    disable_raw_mode()?;
+                    stdout.queue(LeaveAlternateScreen)?;
+                    stdout.flush()?;
+                    return Ok(true); // Signal to break the loop
+                }
+            }
+            _ => {}
+        }
+
         match self.mode {
-            Mode::Normal => match key_event.code {
-                KeyCode::Char('v') => {
-                    self.mode = Mode::Visual;
-                    println!("Switched to {} mode", self.mode);
-                }
-                KeyCode::Char('i') => {
-                    self.mode = Mode::Insert;
-                    println!("Switched to {} mode", self.mode);
-                }
-                _ => {}
-            },
-            Mode::Insert => match key_event.code {
-                KeyCode::Char('v') => {
-                    self.mode = Mode::Visual;
-                    println!("Switched to {} mode", self.mode);
-                }
-                KeyCode::Char('n') => {
-                    self.mode = Mode::Normal;
-                    println!("Switched to Visual mode");
+            Mode::Normal => match event {
+                Event::Key(KeyEvent {
+                    code, modifiers, ..
+                }) => {
+                    match (code, modifiers) {
+                        (KeyCode::Char('i'), KeyModifiers::NONE) => {
+                            self.mode = Mode::Insert;
+                            println!("Switched to {} mode", self.mode);
+                        }
+                        (KeyCode::Char('v'), KeyModifiers::NONE) => {
+                            self.mode = Mode::Visual;
+                            println!("Switched to {} mode", self.mode);
+                        }
+                        // Handle other key events for Normal mode
+                        _ => {}
+                    }
                 }
                 _ => {}
             },
-            Mode::Visual => match key_event.code {
-                KeyCode::Char('n') => {
-                    self.mode = Mode::Normal;
-                    println!("Switched to {} mode", self.mode);
+            Mode::Insert => match event {
+                Event::Key(KeyEvent {
+                    code, modifiers, ..
+                }) => {
+                    match (code, modifiers) {
+                        (KeyCode::Char('n'), KeyModifiers::NONE) => {
+                            self.mode = Mode::Normal;
+                            println!("Switched to {} mode", self.mode);
+                        }
+                        (KeyCode::Char('v'), KeyModifiers::NONE) => {
+                            self.mode = Mode::Visual;
+                            println!("Switched to {} mode", self.mode);
+                        }
+                        // Handle other key events for Insert mode
+                        _ => {}
+                    }
                 }
-                KeyCode::Char('i') => {
-                    self.mode = Mode::Insert;
-                    println!("Switched to {} mode", self.mode);
+                _ => {}
+            },
+            Mode::Visual => match event {
+                Event::Key(KeyEvent {
+                    code, modifiers, ..
+                }) => {
+                    match (code, modifiers) {
+                        (KeyCode::Char('n'), KeyModifiers::NONE) => {
+                            self.mode = Mode::Normal;
+                            println!("Switched to {} mode", self.mode);
+                        }
+                        (KeyCode::Char('i'), KeyModifiers::NONE) => {
+                            self.mode = Mode::Insert;
+                            println!("Switched to {} mode", self.mode);
+                        }
+                        // Handle other key events for Visual mode
+                        _ => {}
+                    }
                 }
                 _ => {}
             },
         }
+        Ok(false)
     }
 }
 
 fn main() -> Result<()> {
-    let mut editor = Editor::new();
-    loop {
-        if let Event::Key(key_event) = read()? {
-            editor.switch_mode(key_event);
-        }
-    }
-
     let mut stdout = stdout();
+    let mut editor = Editor::new();
     stdout.queue(EnterAlternateScreen)?;
     enable_raw_mode()?;
-
-    let (mut w, mut h) = size()?;
-    print_tilde(&mut stdout, (w, h))?;
-    print_intro(&mut stdout, (w, h))?;
-    stdout.queue(MoveTo(6, 0))?;
     stdout.flush()?;
-
     loop {
-        while poll(Duration::ZERO)? {
-            match read()? {
-                Event::Resize(x, y) => {
-                    w = x;
-                    h = y;
-                    stdout.queue(Clear(ClearType::All))?;
-                    print_tilde(&mut stdout, (w, h))?;
-                    stdout.flush()?;
-                }
-                Event::Key(KeyEvent {
-                    code,
-                    modifiers: KeyModifiers::CONTROL,
-                    ..
-                }) => {
-                    if let KeyCode::Char('q') = code {
-                        disable_raw_mode()?;
-                        stdout.queue(LeaveAlternateScreen)?;
-                        return Ok(());
-                    }
-                }
-                Event::Key(KeyEvent { code, .. }) => {
-                    if let KeyCode::Char('h') = code {
-                        let (cursor_col, _) = position()?;
-                        if cursor_col <= 6 {
-                            //do nothing!
-                        } else {
-                            stdout.queue(MoveLeft(1))?;
-                            stdout.flush()?;
-                        }
-                    }
-                    if let KeyCode::Char('j') = code {
-                        stdout.queue(MoveDown(1))?;
-                        stdout.flush()?;
-                    }
-                    if let KeyCode::Char('k') = code {
-                        stdout.queue(MoveUp(1))?;
-                        stdout.flush()?;
-                    }
-                    if let KeyCode::Char('l') = code {
-                        stdout.queue(MoveRight(1))?;
-                        stdout.flush()?;
-                    }
-                }
-                _ => {}
+        if let Ok(event) = read() {
+            if editor.switch_mode(event, &mut stdout)? {
+                break; // Exit the loop if switch_mode returns true
             }
         }
     }
+    Ok(())
 }
 
 fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
