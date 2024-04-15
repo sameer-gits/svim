@@ -41,13 +41,14 @@ impl Editor {
     fn mode(&self) -> &Mode {
         &self.mode
     }
+
     fn switch_mode(
         &mut self,
         event: Event,
         stdout: &mut std::io::Stdout,
         (_, h): (u16, u16),
         (cursor_col, cursor_row): (u16, u16),
-    ) -> Result<bool> {
+        ) -> Result<bool> {
         match event {
             Event::Key(KeyEvent {
                 code, modifiers, ..
@@ -167,17 +168,15 @@ fn main() -> Result<()> {
                         &mut stdout,
                         (w, h),
                         (cursor_col, cursor_row),
-                    )? {
+                        )? {
                         return Ok(());
                     }
                 }
                 Event::Resize(x, y) => {
                     w = x;
                     h = y;
-                    stdout.queue(SavePosition)?;
                     stdout.queue(Clear(ClearType::All))?;
                     print_tilde(&mut stdout, (w, h))?;
-                    stdout.queue(RestorePosition)?;
                     stdout.flush()?;
                 }
                 _ => {}
@@ -188,15 +187,11 @@ fn main() -> Result<()> {
         current_mode(&editor)?; // Print the current mode
         stdout.queue(RestorePosition)?;
         stdout.flush()?;
-        if cursor_row >= h - 2 {
-            stdout.queue(MoveTo(cursor_col, h - 2))?;
-        }
     }
 }
 
 fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
     let tilde = b"~";
-
     for i in 0..h - 2 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
