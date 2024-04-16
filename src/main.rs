@@ -48,7 +48,7 @@ impl Editor {
         stdout: &mut std::io::Stdout,
         (_, h): (u16, u16),
         (cursor_col, cursor_row): (u16, u16),
-        ) -> Result<bool> {
+    ) -> Result<bool> {
         match event {
             Event::Key(KeyEvent {
                 code, modifiers, ..
@@ -168,15 +168,17 @@ fn main() -> Result<()> {
                         &mut stdout,
                         (w, h),
                         (cursor_col, cursor_row),
-                        )? {
+                    )? {
                         return Ok(());
                     }
                 }
                 Event::Resize(x, y) => {
-                    w = x;
+                    w = x; // problem is width and height is getting less after Resize...
                     h = y;
+                    stdout.queue(SavePosition)?;
                     stdout.queue(Clear(ClearType::All))?;
                     print_tilde(&mut stdout, (w, h))?;
+                    stdout.queue(RestorePosition)?;
                     stdout.flush()?;
                 }
                 _ => {}
