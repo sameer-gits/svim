@@ -48,7 +48,7 @@ impl Editor {
         stdout: &mut std::io::Stdout,
         (_, h): (u16, u16),
         (cursor_col, cursor_row): (u16, u16),
-    ) -> Result<bool> {
+        ) -> Result<bool> {
         match event {
             Event::Key(KeyEvent {
                 code, modifiers, ..
@@ -85,7 +85,7 @@ impl Editor {
                             }
                         }
                         (KeyCode::Char('j'), KeyModifiers::NONE) => {
-                            if cursor_row >= h - 3 {
+                            if cursor_row >= h - 4 {
                                 //do nothing!
                             } else {
                                 stdout.queue(MoveDown(1))?;
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
                         &mut stdout,
                         (w, h),
                         (cursor_col, cursor_row),
-                    )? {
+                        )? {
                         return Ok(());
                     }
                 }
@@ -179,6 +179,9 @@ fn main() -> Result<()> {
                     stdout.queue(Clear(ClearType::All))?;
                     print_tilde(&mut stdout, (w, h))?;
                     stdout.queue(RestorePosition)?;
+                    if cursor_row >= y {
+                        stdout.queue(MoveTo(cursor_col, y))?;
+                    }
                     stdout.flush()?;
                 }
                 _ => {}
@@ -188,13 +191,17 @@ fn main() -> Result<()> {
         stdout.queue(MoveTo(0, h - 1))?; // Move to the bottom of the screen
         current_mode(&editor)?; // Print the current mode
         stdout.queue(RestorePosition)?;
+        let (_,nh) = size()?;
+        if cursor_row >= nh - 3 {
+            stdout.queue(MoveTo(cursor_col, nh - 4))?;
+        }
         stdout.flush()?;
     }
 }
 
 fn print_tilde(stdout: &mut std::io::Stdout, (_, h): (u16, u16)) -> Result<()> {
     let tilde = b"~";
-    for i in 0..h - 2 {
+    for i in 0..h - 3 {
         stdout.queue(MoveTo(0, i))?;
         stdout.write_all(tilde)?;
         let numbers = format!("{:>height$}", i + 1, height = 4);
