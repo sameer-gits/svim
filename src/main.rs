@@ -13,6 +13,8 @@ use std::fmt::{self, Display, Formatter};
 use std::io::{stdout, Result, Write};
 use std::time::Duration;
 
+mod text; 
+
 enum Mode {
     Normal,
     Insert,
