@@ -13,7 +13,7 @@ use std::fmt::{self, Display, Formatter};
 use std::io::{stdout, Result, Write};
 use std::time::Duration;
 
-mod text; 
+mod text;
 
 enum Mode {
     Normal,
@@ -48,9 +48,10 @@ impl Editor {
         &mut self,
         event: Event,
         stdout: &mut std::io::Stdout,
+        text_instance: &mut text::Text,
         (_, h): (u16, u16),
         (cursor_col, cursor_row): (u16, u16),
-        ) -> Result<bool> {
+    ) -> Result<bool> {
         match event {
             Event::Key(KeyEvent {
                 code, modifiers, ..
@@ -113,11 +114,13 @@ impl Editor {
                     code, modifiers, ..
                 }) => {
                     match (code, modifiers) {
-                        (KeyCode::Char('n'), KeyModifiers::NONE) => {
+                        (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                             self.mode = Mode::Normal;
                         }
-                        (KeyCode::Char('v'), KeyModifiers::NONE) => {
-                            self.mode = Mode::Visual;
+                        (KeyCode::Char(character), _) => {
+                            text_instance.add_text(character); // Modify the same Text instance
+                            stdout.write_all(&[character as u8])?;
+                            stdout.flush()?;
                         }
                         // Handle other key events for Insert mode
                         _ => {}
@@ -154,6 +157,8 @@ fn main() -> Result<()> {
     stdout.queue(EnterAlternateScreen)?;
     enable_raw_mode()?;
 
+    let mut text_instance = text::Text::new("");
+
     let (mut w, mut h) = size()?;
     print_tilde(&mut stdout, (w, h))?;
     print_intro(&mut stdout, (w, h))?;
@@ -168,9 +173,10 @@ fn main() -> Result<()> {
                     if editor.switch_mode(
                         Event::Key(event),
                         &mut stdout,
+                        &mut text_instance,
                         (w, h),
                         (cursor_col, cursor_row),
-                        )? {
+                    )? {
                         return Ok(());
                     }
                 }
@@ -193,7 +199,7 @@ fn main() -> Result<()> {
         stdout.queue(MoveTo(0, h - 1))?; // Move to the bottom of the screen
         current_mode(&editor)?; // Print the current mode
         stdout.queue(RestorePosition)?;
-        let (_,nh) = size()?;
+        let (_, nh) = size()?;
         if cursor_row >= nh - 3 {
             stdout.queue(MoveTo(cursor_col, nh - 4))?;
         }

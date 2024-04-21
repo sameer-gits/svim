@@ -19,13 +19,17 @@ pub struct Text {
 }
 
 impl Text {
-    fn new(text: &str) -> Text {
+    pub fn new(s: &str) -> Text {
         let text = Text {
-            buffer: String::new(), // Initialize an empty String
+            buffer: String::new(),
             start: 0,
-            end: text.len() - 1,
+            end: s.len(),
         };
         text
     }
 
+    pub fn add_text(&mut self, character: char) {
+        self.buffer.push(character);
+        self.end += 1;
+    }
 }
